@@ -2,7 +2,9 @@
 import streamlit as st
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
+
 
 st.set_page_config(page_title="Inventory Demand Dashboard", layout="wide")
 
