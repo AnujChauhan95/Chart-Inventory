@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
 
 
 st.set_page_config(page_title="Inventory Demand Dashboard", layout="wide")
