@@ -1,8 +1,8 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="Inventory Demand Dashboard", layout="wide")
