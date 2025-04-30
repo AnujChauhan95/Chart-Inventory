@@ -1,40 +1,46 @@
-
 import streamlit as st
 import pandas as pd
-import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Load the saved model
-model = joblib.load('saved_model.pkl')
+# Page config
+st.set_page_config(page_title="Inventory Demand EDA", layout="wide")
 
-# App title
-st.title('Linear Regression Prediction App')
+# Load data
+@st.cache_data
+def load_data():
+    return pd.read_csv("inventory_demand.csv")
 
-# Sidebar for user input features
-st.sidebar.header('User Input Parameters')
+df = load_data()
+st.title("📦 Inventory Demand EDA Dashboard")
 
-def user_input_features():
-    # Example inputs - adjust based on your model features
-    feature1 = st.sidebar.number_input('Feature 1', min_value=0.0, value=0.0)
-    feature2 = st.sidebar.number_input('Feature 2', min_value=0.0, value=0.0)
-    feature3 = st.sidebar.number_input('Feature 3', min_value=0.0, value=0.0)
-    # Add more features if needed
+# Sidebar filters
+warehouse = st.sidebar.multiselect("Select Warehouse(s):", options=df['Warehouse'].unique(), default=df['Warehouse'].unique())
+product_code = st.sidebar.multiselect("Select Product(s):", options=df['Product_Code'].unique(), default=df['Product_Code'].unique())
 
-    data = {
-        'feature1': feature1,
-        'feature2': feature2,
-        'feature3': feature3
-    }
-    features = pd.DataFrame(data, index=[0])
-    return features
+# Filter data
+filtered_df = df[(df['Warehouse'].isin(warehouse)) & (df['Product_Code'].isin(product_code))]
 
-input_df = user_input_features()
+st.subheader("Filtered Data Preview")
+st.dataframe(filtered_df.head(50))
 
-# Main panel
-st.subheader('User Input parameters')
-st.write(input_df)
+# Plot 1 - Demand distribution
+st.subheader("Demand Distribution")
+fig1, ax1 = plt.subplots()
+sns.histplot(filtered_df['Demand'], bins=30, kde=True, ax=ax1)
+st.pyplot(fig1)
 
-# Prediction
-if st.button('Predict'):
-    prediction = model.predict(input_df)
-    st.subheader('Prediction')
-    st.write(prediction[0])
+# Plot 2 - Average demand per product
+st.subheader("Average Demand per Product")
+avg_demand = filtered_df.groupby("Product_Code")['Demand'].mean().sort_values(ascending=False).head(10)
+fig2, ax2 = plt.subplots()
+avg_demand.plot(kind='bar', ax=ax2)
+plt.ylabel("Average Demand")
+st.pyplot(fig2)
+
+# Plot 3 - Demand by Warehouse
+st.subheader("Total Demand by Warehouse")
+total_warehouse = filtered_df.groupby("Warehouse")['Demand'].sum()
+fig3, ax3 = plt.subplots()
+total_warehouse.plot(kind='barh', ax=ax3, color='skyblue')
+st.pyplot(fig3)
