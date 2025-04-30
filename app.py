@@ -59,11 +59,6 @@ st.plotly_chart(px.pie(names=region_sales.index, values=region_sales.values,
                        title='Sales Distribution by Region'), use_container_width=True)
 
 
-fig_discount = go.Figure()
-fig_discount.add_trace(go.Scatter(x=discount_grp['Discount'], y=discount_grp['Units Sold'], mode='markers', name='Actual'))
-fig_discount.add_trace(go.Scatter(x=discount_grp['Discount'], y=discount_grp['Trend'], mode='lines', name='Trendline'))
-fig_discount.update_layout(title="Impact of Discount on Units Sold", xaxis_title="Discount", yaxis_title="Units Sold")
-st.plotly_chart(fig_discount, use_container_width=True)
 
 st.subheader("📊 Demand Forecast vs Actual Sales")
 st.plotly_chart(px.scatter(filtered_df, x='Demand Forecast', y='Units Sold',
