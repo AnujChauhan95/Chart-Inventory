@@ -1,54 +1,92 @@
+
 import streamlit as st
 import pandas as pd
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
 
-st.set_page_config(page_title="Inventory Demand EDA", layout="wide")
+st.set_page_config(page_title="Inventory Demand Dashboard", layout="wide")
 
-DATA_PATH = "inventory_demand.csv"
+st.title("📊 Inventory Demand Analysis Dashboard")
 
+# Load data
 @st.cache_data
 def load_data():
-    if not os.path.exists(DATA_PATH):
-        st.error(f"File '{DATA_PATH}' not found in your repo.")
-        return None
-    try:
-        df = pd.read_csv(DATA_PATH)
-        return df
-    except pd.errors.EmptyDataError:
-        st.error(f"File '{DATA_PATH}' is empty or improperly formatted.")
-        return None
+    df = pd.read_csv("inventory_demand.csv")
+    df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y")
+    return df
 
 df = load_data()
-if df is not None:
-    st.title("📦 Inventory Demand EDA Dashboard")
 
-    # Sidebar filters using Store_ID instead of Warehouse_ID
-    if 'Store_ID' in df.columns and 'Product_Code' in df.columns:
-        store_ids = st.sidebar.multiselect("Select Store(s):", df['Store_ID'].unique(), default=df['Store_ID'].unique())
-        product_codes = st.sidebar.multiselect("Select Product(s):", df['Product_Code'].unique(), default=df['Product_Code'].unique())
-        filtered_df = df[(df['Store_ID'].isin(store_ids)) & (df['Product_Code'].isin(product_codes))]
+# Sidebar filters
+st.sidebar.header("🔍 Filters")
 
-        st.subheader("Filtered Data Preview")
-        st.dataframe(filtered_df.head(50))
+category_options = st.sidebar.multiselect("Select Category", options=sorted(df["Category"].unique()), default=sorted(df["Category"].unique()))
+region_options = st.sidebar.multiselect("Select Region", options=sorted(df["Region"].unique()), default=sorted(df["Region"].unique()))
+weather_options = st.sidebar.multiselect("Select Weather Condition", options=sorted(df["Weather Condition"].unique()), default=sorted(df["Weather Condition"].unique()))
+season_options = st.sidebar.multiselect("Select Seasonality", options=sorted(df["Seasonality"].unique()), default=sorted(df["Seasonality"].unique()))
+date_range = st.sidebar.date_input("Select Date Range", [df["Date"].min(), df["Date"].max()])
 
-        st.subheader("Demand Distribution")
-        fig1, ax1 = plt.subplots()
-        sns.histplot(filtered_df['Order_Demand'], bins=30, kde=True, ax=ax1)
-        st.pyplot(fig1)
+# Filter data
+filtered_df = df[
+    (df["Category"].isin(category_options)) &
+    (df["Region"].isin(region_options)) &
+    (df["Weather Condition"].isin(weather_options)) &
+    (df["Seasonality"].isin(season_options)) &
+    (df["Date"] >= pd.to_datetime(date_range[0])) &
+    (df["Date"] <= pd.to_datetime(date_range[1]))
+]
 
-        st.subheader("Average Demand per Product")
-        avg_demand = filtered_df.groupby("Product_Code")['Order_Demand'].mean().sort_values(ascending=False).head(10)
-        fig2, ax2 = plt.subplots()
-        avg_demand.plot(kind='bar', ax=ax2)
-        plt.ylabel("Average Demand")
-        st.pyplot(fig2)
+# Charts
+st.subheader("📈 Units Sold Over Time (Daily)")
+daily_sales = filtered_df.groupby('Date')['Units Sold'].sum().reset_index()
+st.plotly_chart(px.line(daily_sales, x='Date', y='Units Sold', title='Daily Units Sold'), use_container_width=True)
 
-        st.subheader("Total Demand by Store")
-        total_store = filtered_df.groupby("Store_ID")['Order_Demand'].sum()
-        fig3, ax3 = plt.subplots()
-        total_store.plot(kind='barh', ax=ax3, color='skyblue')
-        st.pyplot(fig3)
-    else:
-        st.warning("Dataset does not contain expected columns like 'Store_ID' and 'Product_Code'.")
+st.subheader("📈 Units Sold Over Time (Monthly)")
+monthly_sales = filtered_df.groupby(filtered_df['Date'].dt.to_period('M'))['Units Sold'].sum().reset_index()
+monthly_sales['Date'] = monthly_sales['Date'].astype(str)
+st.plotly_chart(px.line(monthly_sales, x='Date', y='Units Sold', title='Monthly Units Sold'), use_container_width=True)
+
+st.subheader("🏆 Top Performing Product Categories")
+cat_perf = filtered_df.groupby('Category')['Units Sold'].sum().sort_values(ascending=False)
+st.plotly_chart(px.bar(cat_perf, x=cat_perf.index, y=cat_perf.values,
+                       labels={'x': 'Category', 'y': 'Units Sold'},
+                       title='Top Performing Categories'), use_container_width=True)
+
+st.subheader("🌍 Sales Distribution by Region")
+region_sales = filtered_df.groupby('Region')['Units Sold'].sum()
+st.plotly_chart(px.pie(names=region_sales.index, values=region_sales.values,
+                       title='Sales Distribution by Region'), use_container_width=True)
+
+st.subheader("💸 Impact of Discount on Units Sold")
+discount_grp = filtered_df.groupby('Discount')['Units Sold'].mean().reset_index()
+X = discount_grp[['Discount']]
+y = discount_grp['Units Sold']
+model = LinearRegression().fit(X, y)
+discount_grp['Trend'] = model.predict(X)
+
+fig_discount = go.Figure()
+fig_discount.add_trace(go.Scatter(x=discount_grp['Discount'], y=discount_grp['Units Sold'], mode='markers', name='Actual'))
+fig_discount.add_trace(go.Scatter(x=discount_grp['Discount'], y=discount_grp['Trend'], mode='lines', name='Trendline'))
+fig_discount.update_layout(title="Impact of Discount on Units Sold", xaxis_title="Discount", yaxis_title="Units Sold")
+st.plotly_chart(fig_discount, use_container_width=True)
+
+st.subheader("📊 Demand Forecast vs Actual Sales")
+st.plotly_chart(px.scatter(filtered_df, x='Demand Forecast', y='Units Sold',
+                           title="Demand Forecast vs Actual Sales", trendline="ols"), use_container_width=True)
+
+st.subheader("☁️ Weather Condition vs Units Sold")
+weather_sales = filtered_df.groupby('Weather Condition')['Units Sold'].mean().sort_values(ascending=False)
+st.plotly_chart(px.bar(weather_sales, x=weather_sales.index, y=weather_sales.values,
+                       title='Weather Condition vs Units Sold',
+                       labels={'x': 'Weather Condition', 'y': 'Average Units Sold'}), use_container_width=True)
+
+st.subheader("📦 Inventory Level vs Units Sold")
+st.plotly_chart(px.scatter(filtered_df, x='Inventory Level', y='Units Sold',
+                           title='Inventory Level vs Units Sold', trendline='ols'), use_container_width=True)
+
+st.subheader("📅 Seasonality vs Units Sold")
+season_sales = filtered_df.groupby('Seasonality')['Units Sold'].mean().sort_values(ascending=False)
+st.plotly_chart(px.bar(season_sales, x=season_sales.index, y=season_sales.values,
+                       title='Seasonality vs Units Sold',
+                       labels={'x': 'Seasonality', 'y': 'Average Units Sold'}), use_container_width=True)
