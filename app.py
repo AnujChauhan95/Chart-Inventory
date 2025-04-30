@@ -4,8 +4,6 @@ import pandas as pd
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
-
 
 st.set_page_config(page_title="Inventory Demand Dashboard", layout="wide")
 
@@ -60,12 +58,6 @@ region_sales = filtered_df.groupby('Region')['Units Sold'].sum()
 st.plotly_chart(px.pie(names=region_sales.index, values=region_sales.values,
                        title='Sales Distribution by Region'), use_container_width=True)
 
-st.subheader("💸 Impact of Discount on Units Sold")
-discount_grp = filtered_df.groupby('Discount')['Units Sold'].mean().reset_index()
-X = discount_grp[['Discount']]
-y = discount_grp['Units Sold']
-model = LinearRegression().fit(X, y)
-discount_grp['Trend'] = model.predict(X)
 
 fig_discount = go.Figure()
 fig_discount.add_trace(go.Scatter(x=discount_grp['Discount'], y=discount_grp['Units Sold'], mode='markers', name='Actual'))
