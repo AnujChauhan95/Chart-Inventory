@@ -24,31 +24,31 @@ df = load_data()
 if df is not None:
     st.title("📦 Inventory Demand EDA Dashboard")
 
-    # Sidebar filters
-    if 'Warehouse' in df.columns and 'Product_Code' in df.columns:
-        warehouse = st.sidebar.multiselect("Select Warehouse(s):", df['Warehouse'].unique(), default=df['Warehouse'].unique())
-        product_code = st.sidebar.multiselect("Select Product(s):", df['Product_Code'].unique(), default=df['Product_Code'].unique())
-        filtered_df = df[(df['Warehouse'].isin(warehouse)) & (df['Product_Code'].isin(product_code))]
+    # Sidebar filters using Store_ID instead of Warehouse_ID
+    if 'Store_ID' in df.columns and 'Product_Code' in df.columns:
+        store_ids = st.sidebar.multiselect("Select Store(s):", df['Store_ID'].unique(), default=df['Store_ID'].unique())
+        product_codes = st.sidebar.multiselect("Select Product(s):", df['Product_Code'].unique(), default=df['Product_Code'].unique())
+        filtered_df = df[(df['Store_ID'].isin(store_ids)) & (df['Product_Code'].isin(product_codes))]
 
         st.subheader("Filtered Data Preview")
         st.dataframe(filtered_df.head(50))
 
         st.subheader("Demand Distribution")
         fig1, ax1 = plt.subplots()
-        sns.histplot(filtered_df['Demand'], bins=30, kde=True, ax=ax1)
+        sns.histplot(filtered_df['Order_Demand'], bins=30, kde=True, ax=ax1)
         st.pyplot(fig1)
 
         st.subheader("Average Demand per Product")
-        avg_demand = filtered_df.groupby("Product_Code")['Demand'].mean().sort_values(ascending=False).head(10)
+        avg_demand = filtered_df.groupby("Product_Code")['Order_Demand'].mean().sort_values(ascending=False).head(10)
         fig2, ax2 = plt.subplots()
         avg_demand.plot(kind='bar', ax=ax2)
         plt.ylabel("Average Demand")
         st.pyplot(fig2)
 
-        st.subheader("Total Demand by Warehouse")
-        total_warehouse = filtered_df.groupby("Warehouse")['Demand'].sum()
+        st.subheader("Total Demand by Store")
+        total_store = filtered_df.groupby("Store_ID")['Order_Demand'].sum()
         fig3, ax3 = plt.subplots()
-        total_warehouse.plot(kind='barh', ax=ax3, color='skyblue')
+        total_store.plot(kind='barh', ax=ax3, color='skyblue')
         st.pyplot(fig3)
     else:
-        st.warning("Dataset does not contain expected columns like 'Warehouse' and 'Product_Code'.")
+        st.warning("Dataset does not contain expected columns like 'Store_ID' and 'Product_Code'.")
